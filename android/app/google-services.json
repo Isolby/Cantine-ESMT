@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "97135775012",
+    "project_id": "cantineesmt",
+    "storage_bucket": "cantineesmt.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97135775012:android:136e402626b7813677f7b1",
+        "android_client_info": {
+          "package_name": "com.example.projet_flutter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "97135775012-g4a0r14urb9sovqgp3iud40rabqimhtt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIIcJBKr8f7vEUbkygiYwbAJLfShCXM_A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "97135775012-g4a0r14urb9sovqgp3iud40rabqimhtt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
