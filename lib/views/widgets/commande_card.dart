@@ -1,26 +1,40 @@
 import 'package:flutter/material.dart';
-import '../../models/commande_model.dart';
-import '../../constants/app_colors.dart';
-import '../../utils/date_formatter.dart';
+import 'package:intl/intl.dart';
+import '/../../models/commande_model.dart';
 
 class CommandeCard extends StatelessWidget {
   final CommandeModel commande;
-  final VoidCallback onMarquerPret;
-  final VoidCallback onMarquerRupture;
+  final VoidCallback? onMarquerPret;
+  final VoidCallback? onMarquerRupture;
 
   const CommandeCard({
     Key? key,
     required this.commande,
-    required this.onMarquerPret,
-    required this.onMarquerRupture,
+    this.onMarquerPret,
+    this.onMarquerRupture,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    Color etatColor = _getEtatColor(commande.etat);
+    Color etatColor;
+    IconData etatIcon;
+    
+    switch (commande.etat) {
+      case EtatCommande.pret:
+        etatColor = Colors.green;
+        etatIcon = Icons.check_circle;
+        break;
+      case EtatCommande.rupture:
+        etatColor = Colors.red;
+        etatIcon = Icons.cancel;
+        break;
+      default:
+        etatColor = Colors.orange;
+        etatIcon = Icons.access_time;
+    }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       elevation: 3,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -30,7 +44,7 @@ class CommandeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête : Nom + Badge + Date
+            // En-tête avec nom et statut
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -47,64 +61,84 @@ class CommandeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormatter.getRelativeTime(commande.date),
+                        DateFormat('dd/MM/yyyy HH:mm').format(commande.date),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: etatColor,
-                    borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                  child: Text(
-                    commande.etat.label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                  decoration: BoxDecoration(
+                    color: etatColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: etatColor, width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(etatIcon, color: etatColor, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        commande.etat.label,
+                        style: TextStyle(
+                          color: etatColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+            
             const SizedBox(height: 12),
             const Divider(),
+            const SizedBox(height: 8),
             
             // Liste des plats
             const Text(
-              'Commande:',
+              'Plats commandés:',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 8),
-            ...commande.plats.map((plat) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.circle, size: 6, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('${plat['nom']}'),
-                    const Spacer(),
-                    Text(
-                      '${(plat['prix'] as num).toStringAsFixed(0)} FCFA',
-                      style: TextStyle(color: Colors.grey.shade700),
+            ...commande.plats.map((plat) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.restaurant_menu, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      plat['nom'] ?? 'Plat inconnu',
+                      style: const TextStyle(fontSize: 14),
                     ),
-                  ],
-                ),
-              );
-            }).toList(),
+                  ),
+                  Text(
+                    '${(plat['prix'] ?? 0).toStringAsFixed(0)} FCFA',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             const Divider(),
+            const SizedBox(height: 8),
             
             // Total
             Row(
@@ -113,67 +147,57 @@ class CommandeCard extends StatelessWidget {
                 const Text(
                   'Total:',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
                     fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   '${commande.total.toStringAsFixed(0)} FCFA',
                   style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: AppColors.primary,
+                    color: Colors.green,
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 12),
-            
-            // Boutons d'action
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: onMarquerPret,
-                    icon: const Icon(Icons.check_circle, size: 18),
-                    label: const Text('Prêt'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.etatPret,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+            // Boutons d'action (seulement si en attente)
+            if (commande.etat == EtatCommande.enAttente) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: onMarquerPret,
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text('Prêt'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: onMarquerRupture,
-                    icon: const Icon(Icons.cancel, size: 18),
-                    label: const Text('Rupture'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.etatRupture,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: onMarquerRupture,
+                      icon: const Icon(Icons.cancel),
+                      label: const Text('Rupture'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
-  }
-
-  Color _getEtatColor(EtatCommande etat) {
-    switch (etat) {
-      case EtatCommande.enAttente:
-        return AppColors.etatEnAttente;
-      case EtatCommande.pret:
-        return AppColors.etatPret;
-      case EtatCommande.rupture:
-        return AppColors.etatRupture;
-    }
   }
 }

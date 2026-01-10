@@ -1,138 +1,192 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'dart:async';
-import '../services/firestore_service.dart';
-import '../services/auth_service.dart';
+import '../models/plat_model.dart';
 import '../models/commande_model.dart';
-import '../constants/app_routes.dart';
+import '../services/firestore_service.dart';
+import '../services/storage_service.dart';
 
 class GerantViewModel extends ChangeNotifier {
-  final FirestoreService firestoreService;
+  final FirestoreService _firestoreService = FirestoreService();
+  final StorageService _storageService = StorageService();
   
-  GerantViewModel({required this.firestoreService}) {
-    _loadCommandes();
-    _loadStatistiques();
-  }
-
+  List<PlatModel> _plats = [];
   List<CommandeModel> _commandes = [];
   bool _isLoading = false;
-  String? _errorMessage;
-  StreamSubscription<List<CommandeModel>>? _commandesSubscription;
 
-  // Statistiques
-  int _totalCommandes = 0;
-  int _commandesEnAttente = 0;
-  int _commandesPret = 0;
-  int _commandesRupture = 0;
-  double _revenuTotal = 0;
-
+  List<PlatModel> get plats => _plats;
   List<CommandeModel> get commandes => _commandes;
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-  int get totalCommandes => _totalCommandes;
-  int get commandesEnAttente => _commandesEnAttente;
-  int get commandesPret => _commandesPret;
-  int get commandesRupture => _commandesRupture;
-  double get revenuTotal => _revenuTotal;
 
-  // Charger les commandes en temps réel
-  void _loadCommandes() {
+  // Getters pour les statistiques
+  int get totalCommandes => _commandes.length;
+  int get commandesEnAttente => _commandes.where((c) => c.etat == EtatCommande.enAttente).length;
+  int get commandesPret => _commandes.where((c) => c.etat == EtatCommande.pret).length;
+  int get commandesRupture => _commandes.where((c) => c.etat == EtatCommande.rupture).length;
+  double get revenuTotal => _commandes.where((c) => c.etat == EtatCommande.pret).fold(0, (sum, c) => sum + c.total);
+
+  GerantViewModel() {
+    chargerPlats();
+    chargerCommandes();
+  }
+
+  // Charger les plats
+  void chargerPlats() {
+    _firestoreService.getPlats().listen((plats) {
+      _plats = plats;
+      notifyListeners();
+    });
+  }
+
+  // Charger les commandes
+  void chargerCommandes() {
+    _firestoreService.getCommandes().listen((commandes) {
+      _commandes = commandes;
+      notifyListeners();
+    });
+  }
+
+  // Rafraîchir les données
+  Future<void> refresh() async {
+    chargerPlats();
+    chargerCommandes();
+  }
+
+  // Marquer commande comme prête
+  Future<void> marquerPret(String? commandeId) async {
+    if (commandeId != null) {
+      await _firestoreService.mettreAJourStatutCommande(commandeId, 'Prêt');
+    }
+  }
+
+  // Marquer commande en rupture
+  Future<void> marquerRupture(String? commandeId) async {
+    if (commandeId != null) {
+      await _firestoreService.mettreAJourStatutCommande(commandeId, 'Rupture');
+    }
+  }
+
+  // Ajouter un plat
+  Future<bool> ajouterPlat(String nom, double prix, String categorie, {File? imageFile}) async {
+    if (nom.isEmpty || prix <= 0) {
+      return false;
+    }
+
     _isLoading = true;
     notifyListeners();
 
-    _commandesSubscription?.cancel();
-    _commandesSubscription = firestoreService.getCommandesStream().listen(
-      (commandes) {
-        _commandes = commandes;
-        _isLoading = false;
-        _errorMessage = null;
-        _updateStatistiques();
-        notifyListeners();
-      },
-      onError: (error) {
-        _isLoading = false;
-        _errorMessage = error.toString();
-        notifyListeners();
-      },
-    );
-  }
-
-  // Charger les statistiques
-  Future<void> _loadStatistiques() async {
     try {
-      _totalCommandes = await firestoreService.getTotalCommandes();
-      _revenuTotal = await firestoreService.getRevenuTotal();
+      String? imageUrl;
+      
+      // Uploader l'image si elle existe
+      if (imageFile != null) {
+        imageUrl = await _storageService.uploadPlatImage(imageFile, nom);
+      }
+
+      PlatModel plat = PlatModel(
+        nom: nom,
+        prix: prix,
+        categorie: categorie,
+        imageUrl: imageUrl,
+      );
+
+      await _firestoreService.ajouterPlat(plat);
+      _isLoading = false;
       notifyListeners();
+      return true;
     } catch (e) {
-      // Erreur silencieuse pour les stats
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
-  // Mettre à jour les statistiques localement
-  void _updateStatistiques() {
-    _totalCommandes = _commandes.length;
-    _commandesEnAttente = _commandes
-        .where((c) => c.etat == EtatCommande.enAttente)
-        .length;
-    _commandesPret = _commandes
-        .where((c) => c.etat == EtatCommande.pret)
-        .length;
-    _commandesRupture = _commandes
-        .where((c) => c.etat == EtatCommande.rupture)
-        .length;
-    _revenuTotal = _commandes
-        .where((c) => c.etat == EtatCommande.pret)
-        .fold(0, (sum, c) => sum + c.total);
-  }
+  // Définir le plat du jour
+  Future<bool> definirPlatDuJour(String platId) async {
+    _isLoading = true;
+    notifyListeners();
 
-  // Changer l'état d'une commande
-  Future<void> changerEtatCommande(String commandeId, EtatCommande nouvelEtat) async {
     try {
-      await firestoreService.updateCommandeEtat(commandeId, nouvelEtat);
-      // Le stream se mettra à jour automatiquement
-    } catch (e) {
-      _errorMessage = e.toString();
+      await _firestoreService.definirPlatDuJour(platId);
+      _isLoading = false;
       notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
-  // Marquer comme Prêt
-  Future<void> marquerPret(String commandeId) async {
-    await changerEtatCommande(commandeId, EtatCommande.pret);
+  // Changer la disponibilité d'un plat
+  Future<void> changerDisponibilite(PlatModel plat) async {
+    plat.disponible = !plat.disponible;
+    await _firestoreService.mettreAJourPlat(plat);
   }
 
-  // Marquer comme Rupture
-  Future<void> marquerRupture(String commandeId) async {
-    await changerEtatCommande(commandeId, EtatCommande.rupture);
+  // Supprimer un plat
+  Future<bool> supprimerPlat(PlatModel plat) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _firestoreService.supprimerPlat(plat);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  // Rafraîchir manuellement
-  Future<void> refresh() async {
-    _loadCommandes();
-    await _loadStatistiques();
+  // Modifier un plat
+  Future<bool> modifierPlat(PlatModel plat, String nom, double prix, String categorie, {File? nouvelleImage, bool supprimerImage = false}) async {
+    if (nom.isEmpty || prix <= 0) {
+      return false;
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      plat.nom = nom;
+      plat.prix = prix;
+      plat.categorie = categorie;
+
+      // Gérer l'image
+      if (supprimerImage && plat.imageUrl != null) {
+        await _storageService.deletePlatImage(plat.imageUrl!);
+        plat.imageUrl = null;
+      }
+
+      if (nouvelleImage != null) {
+        if (plat.imageUrl != null) {
+          await _storageService.deletePlatImage(plat.imageUrl!);
+        }
+        plat.imageUrl = await _storageService.uploadPlatImage(nouvelleImage, nom);
+      }
+
+      await _firestoreService.mettreAJourPlat(plat);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  // Filtrer les commandes par état
-  List<CommandeModel> getCommandesByEtat(EtatCommande etat) {
-    return _commandes.where((c) => c.etat == etat).toList();
+  // Mettre à jour le statut d'une commande
+  Future<void> mettreAJourStatutCommande(String commandeId, String statut) async {
+    await _firestoreService.mettreAJourStatutCommande(commandeId, statut);
   }
 
   // Déconnexion
   Future<void> logout(BuildContext context) async {
-    final authService = AuthService();
-    await authService.signOut();
-    
-    if (context.mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-        context, 
-        AppRoutes.home, 
-        (route) => false,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _commandesSubscription?.cancel();
-    super.dispose();
+    // Logique de déconnexion
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 }

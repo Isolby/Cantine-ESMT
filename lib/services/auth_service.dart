@@ -19,6 +19,12 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
+      //log de connexion réussie
+      print('✅ Connexion réussie pour l\'utilisateur: ${userCredential.user?.email}');
+      print('User ID: ${userCredential.user?.uid}');
+      print('Token: ${await userCredential.user?.getIdToken()}');
+      print('Email vérifié: ${userCredential.user?.emailVerified}');
+      print('Dernière connexion: ${userCredential.user?.metadata.lastSignInTime}');
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);

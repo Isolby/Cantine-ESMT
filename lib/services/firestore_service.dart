@@ -1,219 +1,239 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/plat_model.dart';
 import '../models/commande_model.dart';
-import '../models/admin_model.dart';
+import '../services/storage_service.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final StorageService _storageService = StorageService();
 
-  // ============ PLATS ============
-  
-  // Obtenir tous les plats (Stream)
-  Stream<List<PlatModel>> getPlatsStream() {
-    return _db
+  // ============ GESTION DES PLATS ============
+
+  // Récupérer tous les plats
+  Stream<List<PlatModel>> getPlats() {
+    return _firestore
         .collection('plats')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PlatModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return PlatModel.fromMap(doc.id, doc.data());
+      }).toList();
+    });
   }
 
-  // Obtenir tous les plats (Future)
-  Future<List<PlatModel>> getPlats() async {
+  // Récupérer les plats disponibles
+  Future<List<PlatModel>> getPlatsDisponibles() async {
     try {
-      QuerySnapshot snapshot = await _db.collection('plats').get();
-      return snapshot.docs
-          .map((doc) => PlatModel.fromFirestore(doc))
-          .toList();
+      QuerySnapshot snapshot = await _firestore
+          .collection('plats')
+          .where('disponible', isEqualTo: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        return PlatModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+      }).toList();
     } catch (e) {
-      throw 'Erreur lors de la récupération des plats: $e';
+      print('❌ Erreur récupération plats disponibles: $e');
+      return [];
     }
   }
 
   // Ajouter un plat
-  Future<void> addPlat(PlatModel plat) async {
+  Future<void> ajouterPlat(PlatModel plat) async {
     try {
-      await _db.collection('plats').add(plat.toMap());
+      await _firestore.collection('plats').add(plat.toMap());
+      print('✅ Plat ajouté dans Firestore');
     } catch (e) {
-      throw 'Erreur lors de l\'ajout du plat: $e';
+      print('❌ Erreur ajout plat Firestore: $e');
+      rethrow;
     }
   }
 
   // Mettre à jour un plat
-  Future<void> updatePlat(PlatModel plat) async {
+  Future<void> mettreAJourPlat(PlatModel plat) async {
     try {
-      await _db.collection('plats').doc(plat.id).update(plat.toMap());
+      if (plat.id == null) {
+        throw Exception('ID du plat manquant');
+      }
+      await _firestore.collection('plats').doc(plat.id).update(plat.toMap());
+      print('✅ Plat mis à jour dans Firestore');
     } catch (e) {
-      throw 'Erreur lors de la mise à jour du plat: $e';
+      print('❌ Erreur mise à jour plat Firestore: $e');
+      rethrow;
     }
   }
 
-  // Supprimer un plat
-  Future<void> deletePlat(String platId) async {
+  // Supprimer un plat (avec son image)
+  Future<void> supprimerPlat(PlatModel plat) async {
     try {
-      await _db.collection('plats').doc(platId).delete();
+      // Supprimer l'image si elle existe
+      if (plat.imageUrl != null && plat.imageUrl!.isNotEmpty) {
+        await _storageService.deletePlatImage(plat.imageUrl!);
+      }
+
+      // Supprimer le document Firestore
+      if (plat.id != null) {
+        await _firestore.collection('plats').doc(plat.id).delete();
+      }
+
+      print('✅ Plat supprimé de Firestore');
     } catch (e) {
-      throw 'Erreur lors de la suppression du plat: $e';
+      print('❌ Erreur suppression plat Firestore: $e');
+      rethrow;
     }
   }
 
-  // ============ COMMANDES ============
-  
-  // Obtenir toutes les commandes (Stream)
-  Stream<List<CommandeModel>> getCommandesStream() {
-    return _db
-        .collection('commandes')
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CommandeModel.fromFirestore(doc))
-            .toList());
+  // Récupérer un plat par ID
+  Future<PlatModel?> getPlatById(String id) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('plats').doc(id).get();
+      if (doc.exists) {
+        return PlatModel.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      print('❌ Erreur récupération plat: $e');
+      return null;
+    }
   }
 
-  // Obtenir les commandes d'un étudiant
-  Stream<List<CommandeModel>> getCommandesEtudiantStream(String nomEtudiant) {
-    return _db
+  // Définir le plat du jour
+  Future<void> definirPlatDuJour(String platId) async {
+    try {
+      // Retirer le statut de tous les autres plats
+      QuerySnapshot plats = await _firestore.collection('plats').get();
+      for (var doc in plats.docs) {
+        await _firestore
+            .collection('plats')
+            .doc(doc.id)
+            .update({'estPlatDuJour': false});
+      }
+
+      // Définir le nouveau plat du jour
+      await _firestore
+          .collection('plats')
+          .doc(platId)
+          .update({'estPlatDuJour': true});
+
+      print('✅ Plat du jour défini');
+    } catch (e) {
+      print('❌ Erreur définir plat du jour: $e');
+      rethrow;
+    }
+  }
+
+  // Changer la disponibilité d'un plat
+  Future<void> changerDisponibilite(String platId, bool disponible) async {
+    try {
+      await _firestore
+          .collection('plats')
+          .doc(platId)
+          .update({'disponible': disponible});
+      print('✅ Disponibilité du plat mise à jour');
+    } catch (e) {
+      print('❌ Erreur changement disponibilité: $e');
+      rethrow;
+    }
+  }
+
+  // ============ GESTION DES COMMANDES ============
+
+  // Récupérer toutes les commandes
+  Stream<List<CommandeModel>> getCommandes() {
+    return _firestore
         .collection('commandes')
-        .where('etudiant', isEqualTo: nomEtudiant)
         .orderBy('date', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CommandeModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return CommandeModel.fromFirestore(doc);
+      }).toList();
+    });
   }
 
   // Ajouter une commande
-  Future<String> addCommande(CommandeModel commande) async {
+  Future<void> ajouterCommande(CommandeModel commande) async {
     try {
-      DocumentReference docRef = await _db.collection('commandes').add(commande.toMap());
-      return docRef.id;
+      await _firestore.collection('commandes').add(commande.toMap());
+      print('✅ Commande ajoutée dans Firestore');
     } catch (e) {
-      throw 'Erreur lors de l\'ajout de la commande: $e';
+      print('❌ Erreur ajout commande Firestore: $e');
+      rethrow;
     }
   }
 
-  // Mettre à jour l'état d'une commande
-  Future<void> updateCommandeEtat(String commandeId, EtatCommande etat) async {
+  // Mettre à jour le statut d'une commande
+  Future<void> mettreAJourStatutCommande(String commandeId, String statut) async {
     try {
-      await _db.collection('commandes').doc(commandeId).update({
-        'etat': etat.label,
-      });
+      await _firestore
+          .collection('commandes')
+          .doc(commandeId)
+          .update({'etat': statut});
+      print('✅ Statut de la commande mis à jour');
     } catch (e) {
-      throw 'Erreur lors de la mise à jour de la commande: $e';
+      print('❌ Erreur mise à jour statut commande: $e');
+      rethrow;
     }
   }
 
-  // Supprimer une commande
-  Future<void> deleteCommande(String commandeId) async {
+  // Récupérer une commande par ID
+  Future<CommandeModel?> getCommandeById(String id) async {
     try {
-      await _db.collection('commandes').doc(commandeId).delete();
-    } catch (e) {
-      throw 'Erreur lors de la suppression de la commande: $e';
-    }
-  }
-
-  // Obtenir une commande par ID
-  Future<CommandeModel?> getCommandeById(String commandeId) async {
-    try {
-      DocumentSnapshot doc = await _db.collection('commandes').doc(commandeId).get();
+      DocumentSnapshot doc = await _firestore.collection('commandes').doc(id).get();
       if (doc.exists) {
         return CommandeModel.fromFirestore(doc);
       }
       return null;
     } catch (e) {
-      throw 'Erreur lors de la récupération de la commande: $e';
-    }
-  }
-
-  // ============ ADMIN ============
-  
-  // Vérifier si un utilisateur est admin
-  Future<bool> isAdmin(String uid) async {
-    try {
-      DocumentSnapshot doc = await _db.collection('admin').doc(uid).get();
-      return doc.exists;
-    } catch (e) {
-      throw 'Erreur lors de la vérification admin: $e';
-    }
-  }
-
-  // Obtenir les infos d'un admin
-  Future<AdminModel?> getAdminInfo(String uid) async {
-    try {
-      DocumentSnapshot doc = await _db.collection('admin').doc(uid).get();
-      if (doc.exists) {
-        return AdminModel.fromFirestore(doc);
-      }
+      print('❌ Erreur récupération commande: $e');
       return null;
-    } catch (e) {
-      throw 'Erreur lors de la récupération des infos admin: $e';
     }
   }
 
-  // Ajouter un admin
-  Future<void> addAdmin(String uid, String email) async {
+  // ============ GESTION DES ADMINS ============
+
+  // Vérifier si un utilisateur est admin
+  Future<bool> isAdmin(String userId) async {
     try {
-      await _db.collection('admin').doc(uid).set({
-        'email': email,
-        'role': 'gerant',
+      DocumentSnapshot doc = await _firestore.collection('admins').doc(userId).get();
+      
+      if (doc.exists) {
+        print('✅ Utilisateur $userId est admin');
+        return true;
+      } else {
+        print('⚠️ Utilisateur $userId n\'est PAS admin');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Erreur vérification admin: $e');
+      return false;
+    }
+  }
+
+  // Ajouter un admin (pour créer des comptes admin)
+  Future<void> ajouterAdmin(String userId, Map<String, dynamic> adminData) async {
+    try {
+      await _firestore.collection('admins').doc(userId).set({
+        'email': adminData['email'],
+        'nom': adminData['nom'] ?? '',
+        'role': 'admin',
+        'dateCreation': FieldValue.serverTimestamp(),
       });
+      print('✅ Admin ajouté avec succès');
     } catch (e) {
-      throw 'Erreur lors de l\'ajout de l\'admin: $e';
+      print('❌ Erreur ajout admin: $e');
+      rethrow;
     }
   }
 
-  // ============ STATISTIQUES ============
-  
-  // Obtenir le nombre total de commandes
-  Future<int> getTotalCommandes() async {
+  // Supprimer un admin
+  Future<void> supprimerAdmin(String userId) async {
     try {
-      AggregateQuerySnapshot snapshot = await _db
-          .collection('commandes')
-          .count()
-          .get();
-      return snapshot.count ?? 0;
+      await _firestore.collection('admins').doc(userId).delete();
+      print('✅ Admin supprimé avec succès');
     } catch (e) {
-      return 0;
-    }
-  }
-
-  // Obtenir le nombre de commandes par état
-  Future<Map<String, int>> getCommandesParEtat() async {
-    try {
-      QuerySnapshot snapshot = await _db.collection('commandes').get();
-      Map<String, int> stats = {
-        'En attente': 0,
-        'Prêt': 0,
-        'Rupture': 0,
-      };
-
-      for (var doc in snapshot.docs) {
-        String etat = doc['etat'] ?? 'En attente';
-        stats[etat] = (stats[etat] ?? 0) + 1;
-      }
-
-      return stats;
-    } catch (e) {
-      return {'En attente': 0, 'Prêt': 0, 'Rupture': 0};
-    }
-  }
-
-  // Obtenir le revenu total
-  Future<double> getRevenuTotal() async {
-    try {
-      QuerySnapshot snapshot = await _db
-          .collection('commandes')
-          .where('etat', isEqualTo: 'Prêt')
-          .get();
-      
-      double total = 0;
-      for (var doc in snapshot.docs) {
-        total += (doc['total'] ?? 0).toDouble();
-      }
-      
-      return total;
-    } catch (e) {
-      return 0;
+      print('❌ Erreur suppression admin: $e');
+      rethrow;
     }
   }
 }

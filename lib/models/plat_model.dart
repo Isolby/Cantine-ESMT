@@ -1,81 +1,89 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class PlatModel {
-  final String id;
-  final String nom;
-  final double prix;
-  final String image;
+  String? id;
+  String nom;
+  double prix;
+  String categorie;
+  String? description;
+  bool estPlatDuJour;
+  bool disponible;
+  String? imageUrl; // URL de l'image dans Firebase Storage
+  DateTime? dateAjout;
 
   PlatModel({
-    required this.id,
+    this.id,
     required this.nom,
     required this.prix,
-    required this.image,
+    required this.categorie,
+    this.description,
+    this.estPlatDuJour = false,
+    this.disponible = true,
+    this.imageUrl,
+    this.dateAjout,
   });
-
-  // Créer un Plat depuis Firestore
-  factory PlatModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return PlatModel(
-      id: doc.id,
-      nom: data['nom'] ?? '',
-      prix: (data['prix'] ?? 0).toDouble(),
-      image: data['image'] ?? '🍽️',
-    );
-  }
-
-  // Créer un Plat depuis Map
-  factory PlatModel.fromMap(Map<String, dynamic> map, String id) {
-    return PlatModel(
-      id: id,
-      nom: map['nom'] ?? '',
-      prix: (map['prix'] ?? 0).toDouble(),
-      image: map['image'] ?? '🍽️',
-    );
-  }
 
   // Convertir en Map pour Firestore
   Map<String, dynamic> toMap() {
     return {
       'nom': nom,
       'prix': prix,
-      'image': image,
+      'categorie': categorie,
+      'description': description,
+      'estPlatDuJour': estPlatDuJour,
+      'disponible': disponible,
+      'imageUrl': imageUrl,
+      'dateAjout': dateAjout?.toIso8601String() ?? DateTime.now().toIso8601String(),
     };
   }
 
-  // Convertir en Map pour le panier (sans id)
-  Map<String, dynamic> toPanierMap() {
-    return {
-      'nom': nom,
-      'prix': prix,
-      'image': image,
-    };
+  // Créer un objet PlatModel depuis Firestore
+  factory PlatModel.fromMap(String id, Map<String, dynamic> map) {
+    return PlatModel(
+      id: id,
+      nom: map['nom'] ?? '',
+      prix: (map['prix'] ?? 0).toDouble(),
+      categorie: map['categorie'] ?? '',
+      description: map['description'],
+      estPlatDuJour: map['estPlatDuJour'] ?? false,
+      disponible: map['disponible'] ?? true,
+      imageUrl: map['imageUrl'],
+      dateAjout: map['dateAjout'] != null 
+          ? DateTime.parse(map['dateAjout']) 
+          : DateTime.now(),
+    );
   }
 
-  // CopyWith pour créer une copie modifiée
+  // Copier avec modifications
   PlatModel copyWith({
     String? id,
     String? nom,
     double? prix,
-    String? image,
+    String? categorie,
+    String? description,
+    bool? estPlatDuJour,
+    bool? disponible,
+    String? imageUrl,
+    DateTime? dateAjout,
   }) {
     return PlatModel(
       id: id ?? this.id,
       nom: nom ?? this.nom,
       prix: prix ?? this.prix,
-      image: image ?? this.image,
+      categorie: categorie ?? this.categorie,
+      description: description ?? this.description,
+      estPlatDuJour: estPlatDuJour ?? this.estPlatDuJour,
+      disponible: disponible ?? this.disponible,
+      imageUrl: imageUrl ?? this.imageUrl,
+      dateAjout: dateAjout ?? this.dateAjout,
     );
   }
 
-  @override
-  String toString() => 'PlatModel(id: $id, nom: $nom, prix: $prix)';
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is PlatModel && other.id == id;
+  // Pour le panier (simplifié)
+  Map<String, dynamic> toPanierMap() {
+    return {
+      'id': id,
+      'nom': nom,
+      'prix': prix,
+      'imageUrl': imageUrl,
+    };
   }
-
-  @override
-  int get hashCode => id.hashCode;
 }

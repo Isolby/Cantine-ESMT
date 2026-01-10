@@ -15,15 +15,13 @@ import 'views/gerant/gerant_page.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'firebase_options.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialiser Firebase
-  //await Firebase.initializeApp();
-
   await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform, // ← Cette ligne
-);
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   
   runApp(
     MultiProvider(
@@ -70,9 +68,7 @@ class CantineApp extends StatelessWidget {
               child: const HomePage(),
             ),
         AppRoutes.etudiant: (context) => ChangeNotifierProvider(
-              create: (context) => EtudiantViewModel(
-                firestoreService: context.read(),
-              ),
+              create: (context) => EtudiantViewModel(), // ✅ SANS paramètre
               child: const EtudiantPage(),
             ),
         AppRoutes.loginGerant: (context) => ChangeNotifierProvider(
@@ -82,9 +78,7 @@ class CantineApp extends StatelessWidget {
               child: const LoginPage(),
             ),
         AppRoutes.gerant: (context) => ChangeNotifierProvider(
-              create: (context) => GerantViewModel(
-                firestoreService: context.read(),
-              ),
+              create: (context) => GerantViewModel(), // ✅ SANS paramètre
               child: const GerantPage(),
             ),
       },

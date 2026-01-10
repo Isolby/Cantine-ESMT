@@ -176,7 +176,11 @@ class EtudiantPage extends StatelessWidget {
                         backgroundColor: AppColors.success,
                         isLoading: viewModel.isSubmitting,
                         onPressed: () async {
-                          final success = await viewModel.passerCommande(context);
+                          // ✅ CORRECTION ICI - ligne 179
+                          final success = await viewModel.passerCommande(
+                            viewModel.nomController.text
+                          );
+                          
                           if (success && context.mounted) {
                             showDialog(
                               context: context,
@@ -238,7 +242,20 @@ class EtudiantPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final plat = viewModel.panier[index];
                     return ListTile(
-                      leading: Text(plat.image, style: const TextStyle(fontSize: 30)),
+                      leading: plat.imageUrl != null && plat.imageUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                plat.imageUrl!,
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(Icons.restaurant, size: 30);
+                                },
+                              ),
+                            )
+                          : const Icon(Icons.restaurant, size: 30),
                       title: Text(plat.nom),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,

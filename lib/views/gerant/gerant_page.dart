@@ -49,17 +49,16 @@ class GerantPage extends StatelessWidget {
                     : RefreshIndicator(
                         onRefresh: viewModel.refresh,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: viewModel.commandes.length,
-                          itemBuilder: (context, index) {
-                            final commande = viewModel.commandes[index];
-                            return CommandeCard(
-                              commande: commande,
-                              onMarquerPret: () => viewModel.marquerPret(commande.id),
-                              onMarquerRupture: () => viewModel.marquerRupture(commande.id),
-                            );
-                          },
-                        ),
+  itemCount: viewModel.commandes.length,
+  itemBuilder: (context, index) {
+    final commande = viewModel.commandes[index];
+    return CommandeCard(
+      commande: commande,
+      onMarquerPret: () => viewModel.marquerPret(commande.id),
+      onMarquerRupture: () => viewModel.marquerRupture(commande.id),
+    );
+  },
+),
                       ),
               ),
             ],
