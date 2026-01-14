@@ -5,6 +5,7 @@ import '../../viewsmodels/manage_plats_viewmodel.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../models/plat_model.dart';
+import '../../services/firestore_service.dart';
 import 'edit_plat_page.dart';
 
 class ManagePlatsPage extends StatelessWidget {
@@ -13,9 +14,7 @@ class ManagePlatsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => ManagePlatsViewModel(
-        firestoreService: Provider.of(context, listen: false),
-      ),
+      create: (context) => ManagePlatsViewModel(firestoreService: FirestoreService()),
       child: const _ManagePlatsPageContent(),
     );
   }
@@ -30,6 +29,14 @@ class _ManagePlatsPageContent extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Gérer les plats'),
         backgroundColor: AppColors.secondary,
+        actions: [
+          // Bouton de déconnexion
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Déconnexion',
+            onPressed: () => _showLogoutDialog(context),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
@@ -159,6 +166,34 @@ class _ManagePlatsPageContent extends StatelessWidget {
               }
             },
             child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text('Voulez-vous vraiment vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              // Fermer le dialogue
+              Navigator.pop(context);
+              // Retourner à la page d'accueil (ferme toutes les pages jusqu'à la première)
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/home',
+                (route) => false,
+              );
+            },
+            child: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

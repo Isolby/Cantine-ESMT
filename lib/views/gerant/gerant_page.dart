@@ -3,8 +3,11 @@ import 'package:provider/provider.dart';
 import '../../viewsmodels/gerant_viewmodel.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
+import '../../constants/app_routes.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/loading_indicator.dart';
 import '../widgets/commande_card.dart';
+import 'manage_plats_page.dart';
 
 class GerantPage extends StatelessWidget {
   const GerantPage({Key? key}) : super(key: key);
@@ -17,19 +20,76 @@ class GerantPage extends StatelessWidget {
         backgroundColor: AppColors.secondary,
         automaticallyImplyLeading: false,
         actions: [
+          // Bouton pour gérer les plats
+          IconButton(
+            icon: const Icon(Icons.restaurant_menu),
+            tooltip: 'Gérer les plats',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ManagePlatsPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
               context.read<GerantViewModel>().refresh();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              _showLogoutDialog(context);
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'manage_plats') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManagePlatsPage(),
+                  ),
+                );
+              } else if (value == 'logout') {
+                _showLogoutDialog(context);
+              }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'manage_plats',
+                child: Row(
+                  children: [
+                    Icon(Icons.restaurant_menu, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Gérer les plats'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Déconnexion'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+      // Floating Action Button pour accès rapide
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ManagePlatsPage(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.restaurant_menu),
+        label: const Text('Gérer les plats'),
+        backgroundColor: AppColors.primary,
       ),
       body: Consumer<GerantViewModel>(
         builder: (context, viewModel, child) {
@@ -49,16 +109,16 @@ class GerantPage extends StatelessWidget {
                     : RefreshIndicator(
                         onRefresh: viewModel.refresh,
                         child: ListView.builder(
-  itemCount: viewModel.commandes.length,
-  itemBuilder: (context, index) {
-    final commande = viewModel.commandes[index];
-    return CommandeCard(
-      commande: commande,
-      onMarquerPret: () => viewModel.marquerPret(commande.id),
-      onMarquerRupture: () => viewModel.marquerRupture(commande.id),
-    );
-  },
-),
+                          itemCount: viewModel.commandes.length,
+                          itemBuilder: (context, index) {
+                            final commande = viewModel.commandes[index];
+                            return CommandeCard(
+                              commande: commande,
+                              onMarquerPret: () => viewModel.marquerPret(commande.id),
+                              onMarquerRupture: () => viewModel.marquerRupture(commande.id),
+                            );
+                          },
+                        ),
                       ),
               ),
             ],
@@ -211,18 +271,34 @@ class GerantPage extends StatelessWidget {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Déconnexion'),
         content: const Text('Voulez-vous vraiment vous déconnecter ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Annuler'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.read<GerantViewModel>().logout(context);
+            onPressed: () async {
+              // Fermer le dialogue
+              Navigator.pop(dialogContext);
+              
+              // Déconnexion de Firebase Auth
+              try {
+                final authService = Provider.of<AuthService>(context, listen: false);
+                await authService.signOut();
+              } catch (e) {
+                print('Erreur déconnexion: $e');
+              }
+              
+              // Retourner à la page d'accueil
+              if (context.mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.home,
+                  (route) => false,
+                );
+              }
             },
             child: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
           ),

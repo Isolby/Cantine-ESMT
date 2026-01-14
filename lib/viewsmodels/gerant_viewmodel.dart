@@ -183,10 +183,4 @@ class GerantViewModel extends ChangeNotifier {
   Future<void> mettreAJourStatutCommande(String commandeId, String statut) async {
     await _firestoreService.mettreAJourStatutCommande(commandeId, statut);
   }
-
-  // Déconnexion
-  Future<void> logout(BuildContext context) async {
-    // Logique de déconnexion
-    Navigator.of(context).pushReplacementNamed('/login');
-  }
 }
