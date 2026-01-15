@@ -117,6 +117,7 @@ class EtudiantPage extends StatelessWidget {
                 child: RefreshIndicator(
                   onRefresh: viewModel.refreshPlats,
                   child: ListView.builder(
+                    
                     padding: const EdgeInsets.all(16),
                     itemCount: viewModel.plats.length,
                     itemBuilder: (context, index) {

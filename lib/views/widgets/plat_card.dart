@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/plat_model.dart';
 
-// NOUVEAU WIDGET POUR LES IMAGES
+/// ================= WIDGET IMAGE DU PLAT =================
 class PlatImageWidget extends StatelessWidget {
   final PlatModel plat;
   final double width;
@@ -32,19 +32,16 @@ class PlatImageWidget extends StatelessWidget {
                   width: width,
                   height: height,
                   color: Colors.grey[200],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                    ),
+                  alignment: Alignment.center,
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
                   ),
                 );
               },
-              errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholder();
-              },
+              errorBuilder: (_, __, ___) => _buildPlaceholder(),
             )
           : _buildPlaceholder(),
     );
@@ -55,6 +52,7 @@ class PlatImageWidget extends StatelessWidget {
       width: width,
       height: height,
       color: Colors.grey[300],
+      alignment: Alignment.center,
       child: Icon(
         Icons.restaurant,
         size: width * 0.5,
@@ -64,10 +62,11 @@ class PlatImageWidget extends StatelessWidget {
   }
 }
 
+/// ================= PLAT CARD PRINCIPAL =================
 class PlatCard extends StatelessWidget {
   final PlatModel plat;
   final VoidCallback onAdd;
-  final VoidCallback? onTap; // Ajouté pour plus de flexibilité
+  final VoidCallback? onTap;
 
   const PlatCard({
     Key? key,
@@ -80,36 +79,41 @@ class PlatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: onTap, // Support pour le onTap optionnel
+        onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image du plat - REMPLACÉ PAR LE NOUVEAU WIDGET
+              /// IMAGE
               PlatImageWidget(
                 plat: plat,
                 width: 80,
                 height: 80,
               ),
-              
+
               const SizedBox(width: 15),
-              
-              // Informations du plat
+
+              /// INFOS PLAT
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    /// NOM + BADGE "DU JOUR"
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             plat.nom,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -118,6 +122,7 @@ class PlatCard extends StatelessWidget {
                         ),
                         if (plat.estPlatDuJour)
                           Container(
+                            margin: const EdgeInsets.only(left: 6),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
@@ -137,17 +142,25 @@ class PlatCard extends StatelessWidget {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 5),
+
+                    const SizedBox(height: 4),
+
+                    /// CATÉGORIE
                     Text(
                       plat.categorie ?? 'Sans catégorie',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
                       ),
                     ),
-                    if (plat.description != null && plat.description!.isNotEmpty)
+
+                    /// DESCRIPTION
+                    if (plat.description != null &&
+                        plat.description!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 5),
+                        padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           plat.description!,
                           maxLines: 2,
@@ -158,25 +171,33 @@ class PlatCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 5),
+
+                    const SizedBox(height: 8),
+
+                    /// PRIX + DISPONIBILITÉ
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${plat.prix.toStringAsFixed(0)} FCFA',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                        Expanded(
+                          child: Text(
+                            '${plat.prix.toStringAsFixed(0)} FCFA',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: plat.disponible ? Colors.green : Colors.red,
+                            color:
+                                plat.disponible ? Colors.green : Colors.red,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -193,8 +214,8 @@ class PlatCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
-              // Bouton Ajouter - CONSERVÉ POUR LA COMPATIBILITÉ
+
+              /// BOUTON AJOUTER
               IconButton(
                 icon: const Icon(Icons.add_circle, size: 36),
                 color: Colors.green,
@@ -206,55 +227,9 @@ class PlatCard extends StatelessWidget {
       ),
     );
   }
-
-  // Méthode conservée pour la compatibilité ascendante
-  Widget _buildImage() {
-    // Si le plat n'a pas d'image
-    if (plat.imageUrl == null || plat.imageUrl!.isEmpty) {
-      return const Icon(Icons.restaurant, size: 30, color: Colors.grey);
-    }
-
-    // Si c'est une ancienne méthode avec vérification d'emoji
-    if (plat.imageUrl!.length <= 5) { // Probablement un emoji
-      return Center(
-        child: Text(
-          plat.imageUrl!,
-          style: const TextStyle(fontSize: 36),
-        ),
-      );
-    }
-
-    // Si c'est une image Firebase Storage
-    if (plat.imageUrl!.contains('firebasestorage.googleapis.com')) {
-      return Image.network(
-        plat.imageUrl!,
-        width: 60,
-        height: 60,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.restaurant, size: 30, color: Colors.grey);
-        },
-      );
-    }
-
-    // Par défaut, afficher une icône
-    return const Icon(Icons.restaurant, size: 30, color: Colors.grey);
-  }
 }
 
-// Version simplifiée du PlatCard pour compatibilité ascendante
+/// ================= VERSION SIMPLE =================
 class PlatCardSimple extends StatelessWidget {
   final PlatModel plat;
   final VoidCallback onAdd;
@@ -282,6 +257,8 @@ class PlatCardSimple extends StatelessWidget {
         ),
         title: Text(
           plat.nom,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -289,6 +266,8 @@ class PlatCardSimple extends StatelessWidget {
         ),
         subtitle: Text(
           '${plat.prix.toStringAsFixed(0)} FCFA',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.grey.shade700,
             fontSize: 14,
