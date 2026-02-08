@@ -2,214 +2,176 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../viewsmodels/gerant_viewmodel.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_strings.dart';
 import '../../constants/app_routes.dart';
-import '../../models/commande_model.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/loading_indicator.dart';
+import '../../widgets/confirmation_dialog.dart';
 import '../widgets/commande_card.dart';
+import 'manage_plats_page.dart';
 
-class GerantPage extends StatefulWidget {
+class GerantPage extends StatelessWidget {
   const GerantPage({Key? key}) : super(key: key);
 
   @override
-  State<GerantPage> createState() => _GerantPageState();
-}
-
-class _GerantPageState extends State<GerantPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Consumer<GerantViewModel>(
-      builder: (context, viewModel, child) {
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: const Text('Gestion Cantine'),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            actions: [
-              // Bouton test notification
-              IconButton(
-                icon: const Icon(Icons.notification_add),
-                tooltip: 'Tester les notifications',
-                onPressed: () {
-                  viewModel.testNotification();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Test notification envoyé !'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-              ),
-              // Bouton gérer les plats
-              IconButton(
-                icon: const Icon(Icons.restaurant_menu),
-                tooltip: 'Gérer les plats',
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.managePlats);
-                },
-              ),
-              // Bouton déconnexion
-              IconButton(
-                icon: const Icon(Icons.logout),
-                tooltip: 'Déconnexion',
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Déconnexion'),
-                      content: const Text('Êtes-vous sûr ?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Annuler'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Déconnexion'),
-                        ),
-                      ],
-                    ),
-                  );
-                  
-                  if (confirmed != true) return;
-
-                  await viewModel.logout();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, AppRoutes.home);
-                  }
-                },
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white70,
-              indicatorColor: Colors.white,
-              tabs: const [
-                Tab(text: 'Toutes', icon: Icon(Icons.list_alt)),
-                Tab(text: 'En attente', icon: Icon(Icons.pending)),
-                Tab(text: 'Prêtes', icon: Icon(Icons.check_circle)),
-                Tab(text: 'Rupture', icon: Icon(Icons.cancel)),
-              ],
-            ),
-          ),
-          body: _buildBody(viewModel),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => viewModel.loadCommandes(),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(AppStrings.espaceGerant),
+        backgroundColor: AppColors.secondary,
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
             icon: const Icon(Icons.refresh),
-            label: const Text('Actualiser'),
-            backgroundColor: AppColors.primary,
+            onPressed: () {
+              context.read<GerantViewModel>().refresh();
+            },
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildBody(GerantViewModel viewModel) {
-    if (viewModel.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (viewModel.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-            const SizedBox(height: 16),
-            Text(
-              viewModel.errorMessage!,
-              style: TextStyle(color: AppColors.textSecondary),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Déconnexion',
+            onPressed: () {
+              _handleLogout(context);
+            },
+          ),
+        ],
+      ),
+      // Floating Action Button pour accès rapide
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ManagePlatsPage(),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: viewModel.loadCommandes,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Réessayer'),
-            ),
-          ],
-        ),
-      );
-    }
+          );
+        },
+        icon: const Icon(Icons.restaurant_menu),
+        label: const Text('Gérer les plats'),
+        backgroundColor: AppColors.primary,
+      ),
+      body: Consumer<GerantViewModel>(
+        builder: (context, viewModel, child) {
+          if (viewModel.isLoading) {
+            return const LoadingIndicator(message: 'Chargement des commandes...');
+          }
 
-    return Column(
-      children: [
-        _buildStatistics(viewModel),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              _buildCommandesList(
-                viewModel,
-                viewModel.commandes,
-              ),
-              _buildCommandesList(
-                viewModel,
-                viewModel.getCommandesByStatut('enAttente'),
-              ),
-              _buildCommandesList(
-                viewModel,
-                viewModel.getCommandesByStatut('pret'),
-              ),
-              _buildCommandesList(
-                viewModel,
-                viewModel.getCommandesByStatut('rupture'),
+              // Statistiques en haut
+              _buildStatistiques(viewModel),
+              
+              // Liste des commandes
+              Expanded(
+                child: viewModel.commandes.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: viewModel.refresh,
+                        child: ListView.builder(
+                          itemCount: viewModel.commandes.length,
+                          itemBuilder: (context, index) {
+                            final commande = viewModel.commandes[index];
+                            return CommandeCard(
+                              commande: commande,
+                              onMarquerPret: () => viewModel.marquerPret(commande.id),
+                              onMarquerRupture: () => viewModel.marquerRupture(commande.id),
+                            );
+                          },
+                        ),
+                      ),
               ),
             ],
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildStatistics(GerantViewModel viewModel) {
+  Widget _buildStatistiques(GerantViewModel viewModel) {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: Row(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
         children: [
-          Expanded(
-            child: _buildStatCard(
-              'Total',
-              viewModel.totalCommandes.toString(),
-              Icons.receipt_long,
-              Colors.blue,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Total',
+                  viewModel.totalCommandes.toString(),
+                  Icons.receipt_long,
+                  AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatCard(
+                  'En attente',
+                  viewModel.commandesEnAttente.toString(),
+                  Icons.pending,
+                  AppColors.etatEnAttente,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'En attente',
-              viewModel.commandesEnAttente.toString(),
-              Icons.pending_actions,
-              Colors.orange,
-            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Prêt',
+                  viewModel.commandesPret.toString(),
+                  Icons.check_circle,
+                  AppColors.etatPret,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatCard(
+                  'Rupture',
+                  viewModel.commandesRupture.toString(),
+                  Icons.cancel,
+                  AppColors.etatRupture,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              'Revenu',
-              '${viewModel.totalRevenu.toStringAsFixed(0)} F',
-              Icons.attach_money,
-              Colors.green,
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.success.withOpacity(0.1), AppColors.success.withOpacity(0.2)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.monetization_on, color: AppColors.success),
+                const SizedBox(width: 8),
+                const Text(
+                  'Revenu total: ',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '${viewModel.revenuTotal.toStringAsFixed(0)} FCFA',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -217,37 +179,31 @@ class _GerantPageState extends State<GerantPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         children: [
           Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
-              color: AppColors.textSecondary,
+              color: color,
             ),
           ),
         ],
@@ -255,52 +211,41 @@ class _GerantPageState extends State<GerantPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildCommandesList(
-    GerantViewModel viewModel,
-    List<CommandeModel> commandes,
-  ) {
-    if (commandes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(
-              'Aucune commande',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: viewModel.loadCommandes,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: commandes.length,
-        itemBuilder: (context, index) {
-          return CommandeCard(
-            commande: commandes[index],
-            onMarquerPret: () {
-              viewModel.updateCommandeStatut(
-                commandes[index].id,
-                'pret',
-              );
-            },
-            onMarquerRupture: () {
-              viewModel.updateCommandeStatut(
-                commandes[index].id,
-                'rupture',
-              );
-            },
-          );
-        },
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox, size: 100, color: Colors.grey),
+          SizedBox(height: 20),
+          Text(
+            AppStrings.aucuneCommande,
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
       ),
     );
+  }
+
+  void _handleLogout(BuildContext context) {
+    ConfirmationDialog.confirmLogout(context).then((confirmed) {
+      if (confirmed && context.mounted) {
+        // Déconnexion de Firebase Auth
+        try {
+          final authService = Provider.of<AuthService>(context, listen: false);
+          authService.signOut().then((_) {
+            // Retourner à la page d'accueil
+            if (context.mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                AppRoutes.home,
+                (route) => false,
+              );
+            }
+          });
+        } catch (e) {
+          print('Erreur déconnexion: $e');
+        }
+      }
+    });
   }
 }

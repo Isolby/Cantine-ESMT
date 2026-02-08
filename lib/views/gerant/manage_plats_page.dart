@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../viewsmodels/manage_plats_viewmodel.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/loading_indicator.dart';
+import '../../widgets/confirmation_dialog.dart';
 import '../../models/plat_model.dart';
 import '../../services/firestore_service.dart';
 import 'edit_plat_page.dart';
@@ -141,62 +142,29 @@ class _ManagePlatsPageContent extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, ManagePlatsViewModel viewModel, PlatModel plat) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmer la suppression'),
-        content: Text('Voulez-vous vraiment supprimer "${plat.nom}" ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await viewModel.supprimerPlat(plat.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${plat.nom} supprimé'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  void _confirmDelete(BuildContext context, ManagePlatsViewModel viewModel, PlatModel plat) async {
+    final confirmed = await ConfirmationDialog.confirmDeletePlat(context, plat.nom);
+    if (confirmed != true) return;
+
+    await viewModel.supprimerPlat(plat.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${plat.nom} supprimé'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Déconnexion'),
-        content: const Text('Voulez-vous vraiment vous déconnecter ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () {
-              // Fermer le dialogue
-              Navigator.pop(context);
-              // Retourner à la page d'accueil (ferme toutes les pages jusqu'à la première)
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/home',
-                (route) => false,
-              );
-            },
-            child: const Text('Déconnexion', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+  void _showLogoutDialog(BuildContext context) async {
+    final confirmed = await ConfirmationDialog.confirmLogout(context);
+    if (confirmed != true) return;
+
+    // Retourner à la page d'accueil (ferme toutes les pages jusqu'à la première)
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
     );
   }
 }

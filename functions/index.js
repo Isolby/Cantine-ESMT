@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 // ⚙️ VARIABLE DE CONTRÔLE - Changer à false pour désactiver les notifications de test
-const ENABLE_TEST_NOTIFICATIONS = true;
+const ENABLE_TEST_NOTIFICATIONS = false;
 
 // Fonction déclenchée à chaque nouvelle commande
 exports.sendNewCommandeNotification = functions.firestore

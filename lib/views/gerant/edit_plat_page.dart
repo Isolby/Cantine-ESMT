@@ -4,6 +4,7 @@ import '../../viewsmodels/edit_plat_viewmodel.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/confirmation_dialog.dart';
 import '../../utils/validators.dart';
 import '../../models/plat_model.dart';
 
@@ -205,10 +206,17 @@ class _EditPlatPageContent extends StatelessWidget {
                           backgroundColor: AppColors.primary,
                           isLoading: viewModel.isSubmitting,
                           onPressed: () async {
-                            // ✅ CORRECTION - Nouvelle méthode avec tous les paramètres
                             if (!viewModel.formKey.currentState!.validate()) {
                               return;
                             }
+                            
+                            // Afficher la confirmation
+                            final confirmed = await ConfirmationDialog.confirmEditPlat(
+                              context,
+                              viewModel.nomController.text.trim(),
+                            );
+                            
+                            if (!confirmed || !context.mounted) return;
                             
                             final success = await viewModel.modifierPlat(
                               plat: plat,
@@ -296,38 +304,37 @@ class _EditPlatPageContent extends StatelessWidget {
   }
 
   void _showImageSourceDialog(BuildContext context, EditPlatViewModel viewModel) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Choisir une source'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColors.primary),
-              title: const Text('Galerie'),
-              onTap: () {
-                Navigator.pop(context);
-                viewModel.pickImageFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.secondary),
-              title: const Text('Appareil photo'),
-              onTap: () {
-                Navigator.pop(context);
-                viewModel.takePhoto();
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-        ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: AppColors.primary),
+                title: const Text('Galerie'),
+                onTap: () {
+                  Navigator.pop(context);
+                  viewModel.pickImageFromGallery();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: AppColors.secondary),
+                title: const Text('Appareil photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  viewModel.takePhoto();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
     );
   }
 }

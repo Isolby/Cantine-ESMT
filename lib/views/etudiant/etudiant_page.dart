@@ -8,6 +8,7 @@ import '../../widgets/custom_button.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../utils/validators.dart';
 import '../widgets/plat_card.dart';
+import '../../widgets/confirmation_dialog.dart';
 
 class EtudiantPage extends StatelessWidget {
   const EtudiantPage({Key? key}) : super(key: key);
@@ -177,24 +178,33 @@ class EtudiantPage extends StatelessWidget {
                         backgroundColor: AppColors.success,
                         isLoading: viewModel.isSubmitting,
                         onPressed: () async {
-                          // ✅ CORRECTION ICI - ligne 179
-                          final success = await viewModel.passerCommande(
-                            viewModel.nomController.text
+                          final name = viewModel.nomController.text.trim().isEmpty
+                              ? 'Client'
+                              : viewModel.nomController.text.trim();
+                          final montant = viewModel.total.toStringAsFixed(0);
+                          final nb = viewModel.panier.length;
+
+                          final confirmed = await ConfirmationDialog.show(
+                            context: context,
+                            title: 'Confirmer la commande',
+                            message: 'Passer la commande de $name ?\nMontant: $montant FCFA • $nb article(s)',
+                            confirmText: 'Confirmer',
+                            cancelText: 'Annuler',
+                            icon: Icons.shopping_cart_checkout,
                           );
-                          
+
+                          if (!confirmed) return;
+
+                          final success = await viewModel.passerCommande(
+                            viewModel.nomController.text,
+                          );
+
                           if (success && context.mounted) {
-                            showDialog(
+                            await ConfirmationDialog.confirmSuccessAction(
                               context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Succès'),
-                                content: const Text(AppStrings.commandeEnregistree),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('OK'),
-                                  ),
-                                ],
-                              ),
+                              title: 'Succès',
+                              message: AppStrings.commandeEnregistree,
+                              confirmText: 'OK',
                             );
                           }
                         },
@@ -226,7 +236,15 @@ class EtudiantPage extends StatelessWidget {
                 ),
                 if (viewModel.panier.isNotEmpty)
                   TextButton(
-                    onPressed: viewModel.viderPanier,
+                    onPressed: () async {
+                      final confirmed = await ConfirmationDialog.confirmWarningAction(
+                        context: context,
+                        title: 'Vider le panier ?',
+                        message: 'Voulez-vous vraiment vider votre panier ? Tous les items seront supprimés.',
+                        confirmText: 'Vider',
+                      );
+                      if (confirmed) viewModel.viderPanier();
+                    },
                     child: const Text('Vider'),
                   ),
               ],
@@ -264,7 +282,18 @@ class EtudiantPage extends StatelessWidget {
                           Text('${plat.prix} FCFA'),
                           IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => viewModel.retirerDuPanier(index),
+                            onPressed: () async {
+                              final confirmed = await ConfirmationDialog.show(
+                                context: context,
+                                title: 'Retirer l\'article ?',
+                                message: 'Voulez-vous retirer "${plat.nom}" du panier ?',
+                                confirmText: 'Retirer',
+                                cancelText: 'Annuler',
+                                isDangerous: true,
+                                icon: Icons.delete_outline,
+                              );
+                              if (confirmed) viewModel.retirerDuPanier(index);
+                            },
                           ),
                         ],
                       ),
