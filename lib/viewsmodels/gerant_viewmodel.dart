@@ -4,29 +4,37 @@ import '../models/plat_model.dart';
 import '../models/commande_model.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../services/fcm_service.dart';
 
 class GerantViewModel extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final StorageService _storageService = StorageService();
+  final FCMService _fcmService = FCMService();
   
   List<PlatModel> _plats = [];
   List<CommandeModel> _commandes = [];
   bool _isLoading = false;
+  String? _errorMessage;
 
   List<PlatModel> get plats => _plats;
   List<CommandeModel> get commandes => _commandes;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   // Getters pour les statistiques
   int get totalCommandes => _commandes.length;
-  int get commandesEnAttente => _commandes.where((c) => c.etat == EtatCommande.enAttente).length;
-  int get commandesPret => _commandes.where((c) => c.etat == EtatCommande.pret).length;
-  int get commandesRupture => _commandes.where((c) => c.etat == EtatCommande.rupture).length;
-  double get revenuTotal => _commandes.where((c) => c.etat == EtatCommande.pret).fold(0, (sum, c) => sum + c.total);
+  int get commandesEnAttente => _commandes.where((c) => c.etat == 'enAttente').length;
+  int get commandesPret => _commandes.where((c) => c.etat == 'pret').length;
+  int get commandesRupture => _commandes.where((c) => c.etat == 'rupture').length;
+  double get totalRevenu => _commandes.fold(0.0, (sum, c) => sum + c.total);
 
   GerantViewModel() {
+    _initializeData();
+  }
+
+  void _initializeData() {
     chargerPlats();
-    chargerCommandes();
+    _listenToCommandes();
   }
 
   // Charger les plats
@@ -37,18 +45,68 @@ class GerantViewModel extends ChangeNotifier {
     });
   }
 
-  // Charger les commandes
-  void chargerCommandes() {
-    _firestoreService.getCommandes().listen((commandes) {
-      _commandes = commandes;
-      notifyListeners();
-    });
+  // ✅ NOUVEAU: Écouter les commandes en temps réel via stream
+  void _listenToCommandes() {
+    _firestoreService.commandesStream.listen(
+      (commandes) {
+        _commandes = commandes;
+        _isLoading = false;
+        _errorMessage = null;
+        notifyListeners();
+        print('✅ ${commandes.length} commandes chargées');
+      },
+      onError: (error) {
+        _errorMessage = 'Erreur de connexion: $error';
+        _isLoading = false;
+        notifyListeners();
+        print('❌ Erreur écoute commandes: $error');
+      },
+    );
   }
 
-  // Rafraîchir les données
-  Future<void> refresh() async {
-    chargerPlats();
-    chargerCommandes();
+  // ✅ NOUVEAU: Retourner les commandes filtrées par statut
+  List<CommandeModel> getCommandesByStatut(String statut) {
+    return _commandes.where((c) {
+      return c.etat.toString().toLowerCase() == statut.toLowerCase();
+    }).toList();
+  }
+
+  // ✅ NOUVEAU: Charger les commandes avec gestion d'erreur
+  Future<void> loadCommandes() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // Les commandes sont chargées via le listener en arrière-plan
+      await Future.delayed(const Duration(seconds: 1));
+      _isLoading = false;
+    } catch (e) {
+      _errorMessage = 'Erreur lors du chargement des commandes';
+      _isLoading = false;
+      print('❌ Erreur loadCommandes: $e');
+    }
+    notifyListeners();
+  }
+
+  // ✅ NOUVEAU: Mettre à jour le statut d'une commande
+  Future<void> updateCommandeStatut(String? commandeId, String newStatut) async {
+    if (commandeId == null || commandeId.isEmpty) {
+      _errorMessage = 'ID commande invalide';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      print('🔄 Mise à jour statut: $commandeId -> $newStatut');
+      await _firestoreService.mettreAJourStatutCommande(commandeId, newStatut);
+      print('✅ Statut mis à jour avec succès');
+      // La mise à jour se fera automatiquement via le listener
+    } catch (e) {
+      _errorMessage = 'Erreur lors de la mise à jour du statut';
+      notifyListeners();
+      print('❌ Erreur updateCommandeStatut: $e');
+    }
   }
 
   // Marquer commande comme prête
@@ -179,8 +237,47 @@ class GerantViewModel extends ChangeNotifier {
     }
   }
 
-  // Mettre à jour le statut d'une commande
+  // Mettre à jour le statut d'une commande (méthode pour CommandeCard)
   Future<void> mettreAJourStatutCommande(String commandeId, String statut) async {
-    await _firestoreService.mettreAJourStatutCommande(commandeId, statut);
+    await updateCommandeStatut(commandeId, statut);
+  }
+
+  // ✅ NOUVEAU: Test de notification
+  void testNotification() {
+    print('🧪 Test notification');
+    // Afficher un SnackBar avec le token FCM
+    final token = _fcmService.currentToken;
+    if (token != null) {
+      print('🔑 Token FCM actif: ${token.substring(0, 20)}...');
+    } else {
+      print('⚠️ Aucun token FCM disponible');
+    }
+  }
+
+  // ✅ NOUVEAU: Déconnexion améliorée avec gestion FCM
+  Future<void> logout() async {
+    try {
+      print('🔄 Déconnexion en cours...');
+      
+      // Désabonner des topics FCM
+      await _fcmService.unsubscribeFromTopic('nouvelles_commandes');
+      
+      // Nettoyer les données locales
+      _commandes = [];
+      _plats = [];
+      _errorMessage = null;
+      
+      print('✅ Déconnexion effectuée');
+      notifyListeners();
+    } catch (e) {
+      print('❌ Erreur déconnexion: $e');
+      _errorMessage = 'Erreur lors de la déconnexion';
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }

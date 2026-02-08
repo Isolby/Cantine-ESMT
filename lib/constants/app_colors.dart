@@ -8,6 +8,8 @@ class AppColors {
   static const Color warning = Color(0xFFFF9800);
   static const Color grey = Color(0xFF9E9E9E);
   static const Color lightGrey = Color(0xFFF5F5F5);
+  static const Color background = Color(0xFFFAFAFA);
+  static const Color textSecondary = Color(0xFF757575);
   
   static const Color etatEnAttente = Color(0xFFFF9800);
   static const Color etatPret = Color(0xFF4CAF50);

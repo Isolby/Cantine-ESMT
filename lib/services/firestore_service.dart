@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/plat_model.dart';
 import '../models/commande_model.dart';
 import '../services/storage_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
   final StorageService _storageService = StorageService();
 
   // ============ GESTION DES PLATS ============
@@ -138,6 +140,23 @@ class FirestoreService {
 
   // ============ GESTION DES COMMANDES ============
 
+  // ✅ NOUVEAU: Stream pour écouter les commandes en temps réel
+  Stream<List<CommandeModel>> get commandesStream {
+    return _firestore
+        .collection('commandes')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => CommandeModel.fromFirestore(doc))
+              .toList();
+        })
+        .handleError((error) {
+          print('❌ Erreur stream commandes: $error');
+          throw error;
+        });
+  }
+
   // Récupérer toutes les commandes
   Stream<List<CommandeModel>> getCommandes() {
     return _firestore
@@ -151,27 +170,32 @@ class FirestoreService {
     });
   }
 
-  // Ajouter une commande
-  Future<void> ajouterCommande(CommandeModel commande) async {
+  // ✅ NOUVEAU: Ajouter une commande avec gestion d'erreur
+  Future<CommandeModel?> ajouterCommande(CommandeModel commande) async {
     try {
-      await _firestore.collection('commandes').add(commande.toMap());
-      print('✅ Commande ajoutée dans Firestore');
+      final docRef = await _firestore.collection('commandes').add(commande.toMap());
+      await docRef.update({'id': docRef.id});
+
+      final commandeAvecId = commande.copyWith(id: docRef.id);
+      print('✅ Commande ajoutée: ${docRef.id}');
+      
+      return commandeAvecId;
     } catch (e) {
-      print('❌ Erreur ajout commande Firestore: $e');
+      print('❌ Erreur ajout commande: $e');
       rethrow;
     }
   }
 
-  // Mettre à jour le statut d'une commande
-  Future<void> mettreAJourStatutCommande(String commandeId, String statut) async {
+  // ✅ NOUVEAU: Mettre à jour le statut d'une commande
+  Future<void> mettreAJourStatutCommande(String commandeId, String nouveauStatut) async {
     try {
-      await _firestore
-          .collection('commandes')
-          .doc(commandeId)
-          .update({'etat': statut});
-      print('✅ Statut de la commande mis à jour');
+      await _firestore.collection('commandes').doc(commandeId).update({
+        'etat': nouveauStatut,
+        'dateModification': FieldValue.serverTimestamp(),
+      });
+      print('✅ Commande $commandeId mise à jour: $nouveauStatut');
     } catch (e) {
-      print('❌ Erreur mise à jour statut commande: $e');
+      print('❌ Erreur mise à jour statut: $e');
       rethrow;
     }
   }
@@ -233,6 +257,50 @@ class FirestoreService {
       print('✅ Admin supprimé avec succès');
     } catch (e) {
       print('❌ Erreur suppression admin: $e');
+      rethrow;
+    }
+  }
+
+  // Envoyer une notification pour une nouvelle commande
+  Future<void> envoyerNotificationNouvelleCommande(CommandeModel commande) async {
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('envoyerNotificationCommande')
+          .call({
+            'commandeId': commande.id,
+            'total': commande.total,
+            'etat': commande.etat,
+          });
+
+      print('✅ Notification envoyée: ${result.data}');
+    } catch (e) {
+      print('❌ Erreur envoi notification: $e');
+    }
+  }
+
+  // Mettre à jour le statut d'une commande avec notification
+  Future<void> mettreAJourStatutAvecNotification(
+    String commandeId, 
+    String nouveauStatut
+  ) async {
+    try {
+      // 1. Mettre à jour dans Firestore
+      await _firestore
+          .collection('commandes')
+          .doc(commandeId)
+          .update({'etat': nouveauStatut});
+
+      // 2. Envoyer la notification
+      await FirebaseFunctions.instance
+          .httpsCallable('envoyerNotificationStatut')
+          .call({
+            'commandeId': commandeId,
+            'nouveauStatut': nouveauStatut,
+          });
+
+      print('✅ Statut mis à jour et notification envoyée');
+    } catch (e) {
+      print('❌ Erreur: $e');
       rethrow;
     }
   }

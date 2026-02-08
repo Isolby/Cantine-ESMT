@@ -10,7 +10,7 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<HomeViewModel>();
+    context.watch<HomeViewModel>();
 
     return Scaffold(
       appBar: AppBar(

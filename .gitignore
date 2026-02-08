@@ -43,3 +43,60 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
+.packages
+.pub-cache/
+.pub/
+build/
+
+# iOS
+ios/Flutter/.last_build_id
+Pods/
+Podfile.lock
+Runner.xcworkspace/
+*.xcworkspace
+*.xcuserdata
+DerivedData/
+
+# Android
+**/local.properties
+**/android/app/google-services.json
+.gradle/
+/.gradle/
+captures/
+outputs/
+
+# Firebase functions
+functions/node_modules/
+functions/.firebase/
+functions/.runtimeconfig.json
+functions/.env
+functions/dist/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+firebase-debug.log
+
+# Secrets
+.env
+*.keystore
+
+# Generated
+**/generated/
+
+# Keep this file tracked
+!.gitignore

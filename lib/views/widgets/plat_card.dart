@@ -147,7 +147,7 @@ class PlatCard extends StatelessWidget {
 
                     /// CATÉGORIE
                     Text(
-                      plat.categorie ?? 'Sans catégorie',
+                      plat.categorie,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

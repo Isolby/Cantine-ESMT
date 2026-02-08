@@ -1,0 +1,10 @@
+{
+  "firebase": {
+    "apiKey": "test",
+    "authDomain": "test.firebaseapp.com",
+    "projectId": "sample-firestore",
+    "storageBucket": "sample-firestore.appspot.com",
+    "messagingSenderId": "test",
+    "appId": "test"
+  }
+}
