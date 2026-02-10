@@ -4,6 +4,7 @@ import '../../viewsmodels/add_plat_viewmodel.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/confirmation_dialog.dart';
 import '../../utils/validators.dart';
 
 // Widget de sélection d'image
@@ -368,6 +369,9 @@ class _AddPlatPageContent extends StatelessWidget {
                             if (!viewModel.formKey.currentState!.validate()) {
                               return;
                             }
+
+                            final confirmed = await ConfirmationDialog.confirmAddPlat(context);
+                            if (!confirmed || !context.mounted) return;
                             
                             final success = await viewModel.ajouterPlat(
                               nom: viewModel.nomController.text.trim(),
@@ -378,6 +382,17 @@ class _AddPlatPageContent extends StatelessWidget {
                             
                             if (success && context.mounted) {
                               Navigator.pop(context, true);
+                            } else if (!success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    viewModel.errorMessage ?? 'Erreur lors de l\'ajout du plat',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
                             }
                           },
                         ),

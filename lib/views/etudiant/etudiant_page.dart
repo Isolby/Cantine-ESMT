@@ -200,11 +200,12 @@ class EtudiantPage extends StatelessWidget {
                           );
 
                           if (success && context.mounted) {
-                            await ConfirmationDialog.confirmSuccessAction(
-                              context: context,
-                              title: 'Succès',
-                              message: AppStrings.commandeEnregistree,
-                              confirmText: 'OK',
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Commande enregistrée avec succès !'),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 2),
+                              ),
                             );
                           } else if (!success && context.mounted) {
                             // Afficher l'erreur détaillée

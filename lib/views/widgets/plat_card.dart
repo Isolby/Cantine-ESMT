@@ -112,7 +112,7 @@ class PlatCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             plat.nom,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 16,
@@ -175,21 +175,19 @@ class PlatCard extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     /// PRIX + DISPONIBILITÉ
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '${plat.prix.toStringAsFixed(0)} FCFA',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
+                        Text(
+                          '${plat.prix.toStringAsFixed(0)} FCFA',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,

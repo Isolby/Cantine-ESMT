@@ -14,7 +14,10 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.connexionAdmin),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(AppStrings.connexionAdmin),
+        ),
         backgroundColor: AppColors.secondary,
       ),
       body: Consumer<LoginViewModel>(
@@ -32,11 +35,15 @@ class LoginPage extends StatelessWidget {
                       color: AppColors.secondary,
                     ),
                     const SizedBox(height: 40),
-                    const Text(
-                      AppStrings.connexionAdmin,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        AppStrings.connexionAdmin,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
                     const SizedBox(height: 40),

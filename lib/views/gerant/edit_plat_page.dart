@@ -227,7 +227,25 @@ class _EditPlatPageContent extends StatelessWidget {
                             );
                             
                             if (success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Plat modifié avec succès !'),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
                               Navigator.pop(context, true);
+                            } else if (!success && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    viewModel.errorMessage ?? 'Erreur lors de la modification du plat',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.red,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
                             }
                           },
                         ),
