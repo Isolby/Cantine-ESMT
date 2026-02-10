@@ -206,6 +206,18 @@ class EtudiantPage extends StatelessWidget {
                               message: AppStrings.commandeEnregistree,
                               confirmText: 'OK',
                             );
+                          } else if (!success && context.mounted) {
+                            // Afficher l'erreur détaillée
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  viewModel.errorMessage ?? 'Erreur lors de la commande',
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: Colors.red,
+                                duration: const Duration(seconds: 4),
+                              ),
+                            );
                           }
                         },
                       ),

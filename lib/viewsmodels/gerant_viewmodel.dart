@@ -26,7 +26,9 @@ class GerantViewModel extends ChangeNotifier {
   int get commandesEnAttente => _commandes.where((c) => c.etat == EtatCommande.enAttente).length;
   int get commandesPret => _commandes.where((c) => c.etat == EtatCommande.pret).length;
   int get commandesRupture => _commandes.where((c) => c.etat == EtatCommande.rupture).length;
-  double get totalRevenu => _commandes.fold(0.0, (sum, c) => sum + c.total);
+  double get totalRevenu => _commandes
+      .where((c) => c.etat == EtatCommande.pret)
+      .fold(0.0, (sum, c) => sum + c.total);
   double get revenuTotal => totalRevenu; // Alias pour compatibilité UI
 
   GerantViewModel() {
