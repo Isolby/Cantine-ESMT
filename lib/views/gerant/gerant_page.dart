@@ -22,12 +22,6 @@ class GerantPage extends StatelessWidget {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<GerantViewModel>().refresh();
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Déconnexion',
             onPressed: () {
