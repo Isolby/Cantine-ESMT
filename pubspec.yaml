@@ -37,15 +37,18 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
 
-  # Décommentez si vous ajoutez des assets (images, etc.)
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/audios/
+    - assets/pdfs/
+    - assets/videos/
 
   # Décommentez si vous ajoutez des polices personnalisées
   # fonts:
@@ -54,3 +57,21 @@ flutter:
   #       - asset: fonts/Roboto-Regular.ttf
   #       - asset: fonts/Roboto-Bold.ttf
   #         weight: 700
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/mon-icone.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icons/mon-icone.png"
+    background_color: "#ffffff"
+    theme_color: "#ffffff"
+  windows:
+    generate: true
+    image_path: "assets/icons/mon-icone.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icons/mon-icone.png"
